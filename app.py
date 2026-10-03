@@ -138,7 +138,7 @@ if st.session_state.current_page == "Home":
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown(
         "<h1 style='text-align: center; color: #38BDF8;'>পদার্থবিজ্ঞান"
-        " অ্যানালাইসিস হাব</h1>",
+        "অনুশীলন ক্লাব</h1>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -245,7 +245,7 @@ elif st.session_state.current_page == "Deep Analysis":
 # 6. BANGLADESH CLASS 9-10 PHYSICS CURRICULUM
 # ==========================================
 elif st.session_state.current_page == "NCTB Curriculum":
-    if st.button("⬅️ হোমে ফিরে যান"):
+    if st.button("হোমে ফিরে যান"):
         st.session_state.current_page = "Home"
         st.rerun()
 
@@ -335,7 +335,7 @@ elif st.session_state.current_page == "NCTB Curriculum":
 # 7. CQ SOLVE MODULE
 # ==========================================
 elif st.session_state.current_page == "CQ Solve":
-    if st.button("⬅️ হোমে ফিরে যান"):
+    if st.button("হোমে ফিরে যান"):
         st.session_state.current_page = "Home"
         st.rerun()
 
