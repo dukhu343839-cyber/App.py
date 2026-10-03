@@ -2,6 +2,7 @@ import base64
 import math
 import re
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ==========================================
 # 1. PAGE CONFIGURATION & SESSION STATE
@@ -105,10 +106,14 @@ st.markdown(
 # 3. SIDEBAR NAVIGATION (TOP-LEFT MENU)
 # ==========================================
 with st.sidebar:
-    st.title("...মেনু বার")
+    st.title("📌 মেনু বার")
 
     if st.button("🏠 হোম স্ক্রিন (Home)"):
         st.session_state.current_page = "Home"
+        st.rerun()
+
+    if st.button("🎮 ২ডি ফিজিক্স গেম (2D Physics Game)"):
+        st.session_state.current_page = "2D Physics Game"
         st.rerun()
 
     if st.button("🧠 দীপ এনালাইসিস (Deep Analysis)"):
@@ -138,7 +143,7 @@ if st.session_state.current_page == "Home":
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown(
         "<h1 style='text-align: center; color: #38BDF8;'>পদার্থবিজ্ঞান"
-        "   অনুশীলন ক্লাব</h1>",
+        " অনুশীলন ক্লাব</h1>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -173,7 +178,251 @@ if st.session_state.current_page == "Home":
             st.rerun()
 
 # ==========================================
-# 5. DEEP ANALYSIS (REAL-LIFE PHYSICS & FORMULAS)
+# 5. HIGH QUALITY 2D PHYSICS GAME MODULE
+# ==========================================
+elif st.session_state.current_page == "2D Physics Game":
+    if st.button("⬅️ হোমে ফিরে যান"):
+        st.session_state.current_page = "Home"
+        st.rerun()
+
+    st.title("🎮 ২ডি প্রজেক্টাইল ক্যানন সিমুলেশন গেম")
+    st.caption(
+        "বেগ (Velocity) এবং কোণ (Angle) ঠিক করে টার্গেটে আঘাত করুন। প্রজেক্টাইল"
+        " গতির বাস্তবসম্মত অনুকরণ।"
+    )
+    st.markdown("---")
+
+    game_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body { margin: 0; background: #0F172A; color: #E2E8F0; font-family: 'Inter', sans-serif; text-align: center; overflow: hidden; }
+        #canvas-container { display: flex; justify-content: center; flex-direction: column; align-items: center; }
+        canvas { background: #1E293B; border: 2px solid #334155; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); margin-top: 5px; }
+        .hud { display: flex; justify-content: space-around; width: 100%; max-width: 780px; font-size: 15px; color: #38BDF8; font-weight: bold; margin-bottom: 8px; background: #1E293B; padding: 10px; border-radius: 8px; border: 1px solid #334155; }
+        .controls { display: flex; justify-content: center; gap: 15px; margin-top: 12px; align-items: center; flex-wrap: wrap; background: #1E293B; padding: 12px; border-radius: 10px; border: 1px solid #334155; width: 100%; max-width: 780px; }
+        label { font-size: 14px; color: #94A3B8; font-weight: bold; }
+        input[type=number] { background: #0F172A; color: #38BDF8; border: 1px solid #334155; padding: 6px; border-radius: 6px; font-weight: bold; width: 60px; text-align: center; }
+        button { background: #38BDF8; color: #0F172A; border: none; padding: 8px 20px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px; }
+        button:hover { background: #7DD3FC; transform: scale(1.03); }
+        .reset-btn { background: #EF4444 !important; color: white !important; }
+        .reset-btn:hover { background: #F87171 !important; }
+    </style>
+    </head>
+    <body>
+        <div id="canvas-container">
+            <div class="hud">
+                <span>🎯 স্কোর: <span id="score" style="color:#FFF;">0</span></span>
+                <span>📍 টার্গেট দূরত্ব: <span id="targetDist" style="color:#FFF;">400</span>m</span>
+                <span>💥 সফল আঘাত: <span id="hits" style="color:#FFF;">0</span></span>
+            </div>
+            <canvas id="gameCanvas" width="780" height="380"></canvas>
+            <div class="controls">
+                <label>বেগ $v$ (m/s): <input type="number" id="vel" value="65" min="10" max="120"></label>
+                <label>কোণ $\theta$ (°): <input type="number" id="ang" value="45" min="0" max="90"></label>
+                <button onclick="fire()">🚀 ফায়ার (Fire)</button>
+                <button class="reset-btn" onclick="resetTarget()">🔄 নতুন টার্গেট</button>
+            </div>
+        </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let score = 0;
+        let hits = 0;
+        let targetX = 400;
+        let targetWidth = 35;
+        let ball = { x: 40, y: 340, vx: 0, vy: 0, active: false };
+        let particles = [];
+        let trajectoryPath = [];
+
+        function init() {
+            resetTarget();
+            draw();
+        }
+
+        function resetTarget() {
+            targetX = 200 + Math.random() * 520;
+            document.getElementById('targetDist').innerText = Math.round(targetX);
+            ball.active = false;
+            particles = [];
+            trajectoryPath = [];
+            draw();
+        }
+
+        function drawTrajectory() {
+            let v = parseFloat(document.getElementById('vel').value);
+            let a = parseFloat(document.getElementById('ang').value) * Math.PI / 180;
+            let vx = v * Math.cos(a) * 0.22;
+            let vy = -v * Math.sin(a) * 0.22;
+            let px = 40, py = 340;
+            let g = 0.15;
+
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+            ctx.moveTo(px, py);
+
+            for (let i = 0; i < 150; i++) {
+                px += vx;
+                py += vy;
+                vy += g;
+                if (py > 345) break;
+                ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Ground Background Grid
+            ctx.strokeStyle = "#334155";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, 345);
+            ctx.lineTo(canvas.width, 345);
+            ctx.stroke();
+
+            ctx.fillStyle = "#0F172A";
+            ctx.fillRect(0, 345, canvas.width, 35);
+
+            // Draw Cannon Base & Barrel
+            let a = parseFloat(document.getElementById('ang').value) * Math.PI / 180;
+            ctx.save();
+            ctx.translate(40, 340);
+            ctx.rotate(-a);
+            ctx.fillStyle = "#38BDF8";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#38BDF8";
+            ctx.fillRect(0, -6, 28, 12);
+            ctx.restore();
+
+            ctx.beginPath();
+            ctx.arc(40, 340, 14, 0, Math.PI * 2);
+            ctx.fillStyle = "#0284C7";
+            ctx.fill();
+
+            // Draw Trajectory Line
+            if (!ball.active) {
+                drawTrajectory();
+            }
+
+            // Draw Target Zone (Glow Effect)
+            ctx.fillStyle = "#EF4444";
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#EF4444";
+            ctx.fillRect(targetX, 332, targetWidth, 13);
+            ctx.shadowBlur = 0;
+
+            // Draw Ball Path
+            if (trajectoryPath.length > 1) {
+                ctx.beginPath();
+                ctx.strokeStyle = "rgba(125, 211, 252, 0.6)";
+                ctx.lineWidth = 2;
+                ctx.moveTo(trajectoryPath[0].x, trajectoryPath[0].y);
+                for (let p of trajectoryPath) ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+            }
+
+            // Draw Animated Ball
+            if (ball.active) {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = "#F0ABFC";
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = "#F0ABFC";
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // Draw Explosions / Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.02;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 25; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    size: Math.random() * 4 + 2,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        function fire() {
+            if (ball.active) return;
+            let v = parseFloat(document.getElementById('vel').value);
+            let a = parseFloat(document.getElementById('ang').value) * Math.PI / 180;
+            
+            ball.x = 40;
+            ball.y = 340;
+            ball.vx = v * Math.cos(a) * 0.22;
+            ball.vy = -v * Math.sin(a) * 0.22;
+            ball.active = true;
+            trajectoryPath = [];
+            
+            animate();
+        }
+
+        function animate() {
+            if (!ball.active) return;
+
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.vy += 0.15; // Gravity acceleration
+
+            trajectoryPath.push({ x: ball.x, y: ball.y });
+
+            // Check Floor Collision
+            if (ball.y >= 340) {
+                ball.y = 340;
+                ball.active = false;
+
+                // Check Target Hit Condition
+                if (ball.x >= targetX && ball.x <= targetX + targetWidth) {
+                    score += 100;
+                    hits += 1;
+                    document.getElementById('score').innerText = score;
+                    document.getElementById('hits').innerText = hits;
+                    createExplosion(ball.x, ball.y, "#34D399");
+                    setTimeout(resetTarget, 1000);
+                } else {
+                    createExplosion(ball.x, ball.y, "#F87171");
+                }
+            }
+
+            draw();
+            if (ball.active || particles.length > 0) {
+                requestAnimationFrame(animate);
+            }
+        }
+
+        init();
+    </script>
+    </body>
+    </html>
+    """
+    components.html(game_html, height=520)
+
+# ==========================================
+# 6. DEEP ANALYSIS (REAL-LIFE PHYSICS & FORMULAS)
 # ==========================================
 elif st.session_state.current_page == "Deep Analysis":
     if st.button("⬅️ হোমে ফিরে যান"):
@@ -242,10 +491,10 @@ elif st.session_state.current_page == "Deep Analysis":
         st.latex(r"P = h \cdot \rho \cdot g")
 
 # ==========================================
-# 6. BANGLADESH CLASS 9-10 PHYSICS CURRICULUM
+# 7. BANGLADESH CLASS 9-10 PHYSICS CURRICULUM
 # ==========================================
 elif st.session_state.current_page == "NCTB Curriculum":
-    if st.button("হোমে ফিরে যান"):
+    if st.button("⬅️ হোমে ফিরে যান"):
         st.session_state.current_page = "Home"
         st.rerun()
 
@@ -332,10 +581,10 @@ elif st.session_state.current_page == "NCTB Curriculum":
                 st.latex(formula)
 
 # ==========================================
-# 7. CQ SOLVE MODULE
+# 8. CQ SOLVE MODULE
 # ==========================================
 elif st.session_state.current_page == "CQ Solve":
-    if st.button("হোমে ফিরে যান"):
+    if st.button("⬅️ হোমে ফিরে যান"):
         st.session_state.current_page = "Home"
         st.rerun()
 
@@ -356,7 +605,7 @@ elif st.session_state.current_page == "CQ Solve":
         """)
 
 # ==========================================
-# 8. BOT DISCUSSION & CALCULATOR
+# 9. BOT DISCUSSION & CALCULATOR
 # ==========================================
 elif st.session_state.current_page == "Physics Bot":
     if st.button("⬅️ হোমে ফিরে যান"):
@@ -402,7 +651,7 @@ elif st.session_state.current_page == "Physics Bot":
             st.write(reply)
 
 # ==========================================
-# 9. THEME & GALLERY BACKGROUND SETTINGS
+# 10. THEME & GALLERY BACKGROUND SETTINGS
 # ==========================================
 elif st.session_state.current_page == "Theme Settings":
     if st.button("⬅️ হোমে ফিরে যান"):
