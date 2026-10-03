@@ -1,367 +1,431 @@
+import base64
 import math
 import re
 import streamlit as st
-import streamlit.components.v1 as components
 
 # ==========================================
-# 1. PAGE CONFIGURATION & CSS STYLES
+# 1. PAGE CONFIGURATION & SESSION STATE
 # ==========================================
 st.set_page_config(
-    page_title="Physics Core Engine",
+    page_title="Physics Core & Analysis Engine",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Dark Minimalist Slate Style CSS
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-color: #0D1117;
-        color: #C9D1D9;
-        font-family: 'Inter', -apple-system, sans-serif;
-    }
-    
-    /* Clean Home Screen Option Cards */
-    .option-box {
-        background-color: #161B22;
-        border: 1px solid #30363D;
-        border-radius: 10px;
-        padding: 25px;
-        text-align: center;
-        margin-bottom: 20px;
-        transition: all 0.3s ease;
-    }
-    
-    .stButton > button {
-        width: 100%;
-        background-color: #161B22;
-        color: #58A6FF;
-        border: 1px solid #30363D;
-        border-radius: 8px;
-        padding: 20px;
-        font-size: 1.1rem;
-        font-weight: 600;
-        font-family: monospace;
-    }
-    
-    .stButton > button:hover {
-        background-color: #21262D;
-        border-color: #58A6FF;
-        color: #79C0FF;
-    }
-
-    div[data-testid="stSidebar"] {
-        background-color: #161B22;
-        border-right: 1px solid #30363D;
-    }
-    </style>
-""",
-    unsafe_allow_html=True,
-)
-
-# Session State Initialization
+# Initialize Session States
 if "current_page" not in st.session_state:
     st.session_state.current_page = "Home"
+
+if "bg_image" not in st.session_state:
+    st.session_state.bg_image = None
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = [{
         "role": "assistant",
         "content": (
-            "হ্যালো! আমি আপনার ফিজিক্স অ্যাসিস্ট্যান্ট। আমাকে যেকোনো গাণিতিক"
-            " হিসাব, হাই-হ্যালো বা ফিজিক্সের সমস্যা জিজ্ঞেস করতে পারেন।"
+            "হ্যালো! আমি আপনার ফিজিক্স অ্যাসিস্ট্যান্ট। আমাকে যেকোনো প্রশ্ন বা"
+            " গাণিতিক হিসাব জিজ্ঞেস করতে পারেন।"
         ),
     }]
 
 # ==========================================
-# 2. SIDEBAR MENU & 2D ANIMATED GAME
+# 2. DYNAMIC CSS & THEME ENGINE (GEMINI FONT)
+# ==========================================
+bg_css = ""
+if st.session_state.bg_image:
+    bg_css = f"""
+    .stApp {{
+        background-image: url("data:image/png;base64,{st.session_state.bg_image}");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }}
+    .stApp > header {{
+        background: transparent;
+    }}
+    .main-card, .stButton > button, div[data-testid="stExpander"] {{
+        background-color: rgba(15, 23, 42, 0.85) !important;
+        backdrop-filter: blur(8px);
+    }}
+    """
+
+st.markdown(
+    f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+    /* Gemini Standard Clean Font Styling */
+    html, body, [class*="css"], .stApp {{
+        font-family: 'Hind Siliguri', 'Inter', -apple-system, sans-serif;
+        background-color: #0F172A;
+        color: #E2E8F0;
+    }}
+
+    {bg_css}
+
+    /* Option Cards Styling */
+    .option-card {{
+        background: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }}
+
+    .stButton > button {{
+        width: 100%;
+        border-radius: 10px;
+        padding: 16px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        background-color: #1E293B;
+        color: #38BDF8;
+        border: 1px solid #334155;
+        transition: all 0.2s ease;
+    }}
+
+    .stButton > button:hover {{
+        background-color: #38BDF8;
+        color: #0F172A;
+        border-color: #38BDF8;
+    }}
+
+    /* Sidebar Clean Navigation */
+    div[data-testid="stSidebar"] {{
+        background-color: #0F172A;
+        border-right: 1px solid #1E293B;
+    }}
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
+# ==========================================
+# 3. SIDEBAR NAVIGATION (TOP-LEFT MENU)
 # ==========================================
 with st.sidebar:
-    st.title("NAVIGATION & TOOLS")
+    st.title("📌 মেনু বার")
 
-    if st.button("HOME SCREEN"):
+    if st.button("🏠 হোম স্ক্রিন (Home)"):
         st.session_state.current_page = "Home"
         st.rerun()
 
-    st.markdown("---")
-    st.subheader("2D PHYSICS GAME")
-    st.caption("Projectile Target Hit Simulation")
+    if st.button("📊 দীপ এনালাইসিস (Deep Analysis)"):
+        st.session_state.current_page = "Deep Analysis"
+        st.rerun()
 
-    # 2D Interactive Cannon Game HTML5 Canvas Engine
-    game_canvas_code = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <style>
-        body { margin: 0; background: #0D1117; color: #C9D1D9; font-family: monospace; text-align: center; }
-        canvas { background: #161B22; border: 1px solid #30363D; border-radius: 6px; margin-top: 8px; }
-        .controls { font-size: 11px; margin-bottom: 5px; }
-        input { background: #21262D; color: #58A6FF; border: 1px solid #30363D; width: 45px; border-radius: 3px; padding: 2px; }
-        button { background: #21262D; color: #79C0FF; border: 1px solid #30363D; padding: 3px 8px; border-radius: 3px; cursor: pointer; }
-    </style>
-    </head>
-    <body>
-        <div class="controls">
-            Velocity: <input type="number" id="vel" value="50">
-            Angle: <input type="number" id="ang" value="45">
-            <button onclick="fire()">FIRE</button>
-        </div>
-        <canvas id="gameCanvas" width="270" height="170"></canvas>
-        <div id="status" style="font-size:11px; color:#79C0FF; margin-top:4px;">Target at 200m. Launch cannon!</div>
+    if st.button("📖 ৯-১০ম ফিজিক্স (NCTB Physics)"):
+        st.session_state.current_page = "NCTB Curriculum"
+        st.rerun()
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        let targetX = 200;
-        let ball = {x: 10, y: 160, vx: 0, vy: 0, active: false};
-        
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Ground
-            ctx.fillStyle = "#30363D";
-            ctx.fillRect(0, 165, canvas.width, 5);
-            
-            // Target
-            ctx.fillStyle = "#F85149";
-            ctx.fillRect(targetX, 150, 12, 15);
-            
-            // Cannon
-            ctx.fillStyle = "#58A6FF";
-            ctx.fillRect(5, 155, 12, 10);
-            
-            // Ball Animation
-            if (ball.active) {
-                ctx.beginPath();
-                ctx.arc(ball.x, ball.y, 3, 0, Math.PI*2);
-                ctx.fillStyle = "#79C0FF";
-                ctx.fill();
-            }
-        }
-        
-        function fire() {
-            if (ball.active) return;
-            let v = parseFloat(document.getElementById('vel').value);
-            let a = parseFloat(document.getElementById('ang').value) * Math.PI / 180;
-            ball.x = 10;
-            ball.y = 160;
-            ball.vx = v * Math.cos(a) * 0.15;
-            ball.vy = -v * Math.sin(a) * 0.15;
-            ball.active = true;
-            document.getElementById('status').innerText = "In Motion...";
-            animate();
-        }
-        
-        function animate() {
-            if (!ball.active) return;
-            ball.x += ball.vx;
-            ball.y += ball.vy;
-            ball.vy += 0.12; // Gravity simulation
-            
-            if (ball.y >= 160) {
-                ball.y = 160;
-                ball.active = false;
-                if (Math.abs(ball.x - targetX) < 12) {
-                    document.getElementById('status').innerText = "TARGET DESTROYED! Score +100";
-                    targetX = 90 + Math.random() * 140;
-                } else {
-                    document.getElementById('status').innerText = "MISSED! Adjust angle/velocity.";
-                }
-            }
-            draw();
-            if (ball.active) requestAnimationFrame(animate);
-        }
-        draw();
-    </script>
-    </body>
-    </html>
-    """
-    components.html(game_canvas_code, height=250)
+    if st.button("📝 সিকিউ সলভ (CQ Solve)"):
+        st.session_state.current_page = "CQ Solve"
+        st.rerun()
 
-    st.markdown("---")
-    st.subheader("SETTINGS")
-    st.selectbox("Theme Mode", ["Dark Slate", "Chalkboard Green"])
+    if st.button("🤖 ফিজিক্স বট ও বটসেশন"):
+        st.session_state.current_page = "Physics Bot"
+        st.rerun()
+
+    if st.button("🎨 থিম ও ব্যাকগ্রাউন্ড সেটিংস"):
+        st.session_state.current_page = "Theme Settings"
+        st.rerun()
 
 # ==========================================
-# 3. HOME SCREEN (ONLY 4 OPTIONS)
+# 4. HOME SCREEN (ONLY 4 MAIN OPTIONS)
 # ==========================================
 if st.session_state.current_page == "Home":
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='text-align: center; color: #38BDF8;'>পদার্থবিজ্ঞান"
+        " অ্যানালাইসিস হাব</h1>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<p style='text-align: center; color: #94A3B8;'>নিচের যেকোনো অপশন"
+        " নির্বাচন করুন</p>",
+        unsafe_allow_html=True,
+    )
+    st.markdown("<br>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("Deep Analysis\n(দীপ এনালাইসিস)", key="btn_deep"):
+        if st.button("📊 দীপ এনালাইসিস (Deep Analysis)", key="home_deep"):
             st.session_state.current_page = "Deep Analysis"
             st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        if st.button(
-            "Learning Physics Basic\n(লার্নিং ফিজিক্স বেসিক)", key="btn_basic"
-        ):
-            st.session_state.current_page = "Learning Physics Basic"
+        if st.button("📖 লার্নিং ফিজিক্স বেসিক (৯ম-১০ম)", key="home_basic"):
+            st.session_state.current_page = "NCTB Curriculum"
             st.rerun()
 
     with col2:
-        if st.button("CQ Solve\n(সিকিউ সলভ)", key="btn_cq"):
+        if st.button("📝 সিকিউ সলভ (CQ Solve)", key="home_cq"):
             st.session_state.current_page = "CQ Solve"
             st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        if st.button(
-            "Discussion Any Problem with Bot\n(ডিসকাশন এনি প্রবলেম উইথ বট)",
-            key="btn_bot",
-        ):
-            st.session_state.current_page = "Bot Discussion"
+        if st.button("🤖 ডিসকাশন এনি প্রবলেম উইথ বট", key="home_bot"):
+            st.session_state.current_page = "Physics Bot"
             st.rerun()
 
 # ==========================================
-# 4. MODULE PAGES
+# 5. DEEP ANALYSIS (REAL-LIFE PHYSICS & FORMULAS)
 # ==========================================
 elif st.session_state.current_page == "Deep Analysis":
-    if st.button("Back to Home"):
+    if st.button("⬅️ হোমে ফিরে যান"):
         st.session_state.current_page = "Home"
         st.rerun()
 
-    st.title("Deep Analysis Module")
+    st.title("📊 দীপ এনালাইসিস ও বাস্তবসম্মত উদাহরণ")
     st.markdown("---")
-    st.markdown("**জটিল সার্কিট বিশ্লেষণ:**")
-    st.code(
-        """// ADVANCED CIRCUIT PARSING MATRIX
-V_input = 100.0 // Volts
-Req_calculated = 14.5 // Ohms
-I_total = V_input / Req_calculated // 6.90 Amperes
-Power_Dissipation = (I_total^2) * Req_calculated // 690.0 Watts""",
-        language="cpp",
+
+    tab1, tab2 = st.tabs(
+        ["💡 বাস্তবসম্মত পদার্থবিজ্ঞান", "📐 মৌলিক সূত্র ও প্রতিপাদন"]
     )
 
+    with tab1:
+        with st.expander(
+            "১. বাদুড় চোখ ছাড়া কীভাবে সামনে এগিয়ে চলে? (Ultrasonic Waves)"
+        ):
+            st.write("""
+            **ব্যাখ্যা:** বাদুড় উড়ন্ত অবস্থায় উচ্চ কম্পাঙ্কের শব্দোত্তর তরঙ্গ (Ultrasonic Sound Waves - ২০,০০০ Hz এর বেশি) তৈরি করে। এই শব্দ সামনে থাকা বাধা বা শিকারে প্রতিফলিত হয়ে আবার বাদুড়ের কানে ফিরে আসে। শব্দ নির্গমন এবং প্রতিফলিত প্রতিধ্বনি শোনার মধ্যবর্তী সময় মেপে বাদুড় মস্তিষ্কের সাহায্যে বস্তুর দূরত্ব, আকার ও অবস্থান নিখুঁতভাবে হিসেব করে ফেলে। এটিকে **প্রতিধ্বনি অবস্থান নির্ধারণ (Echolocation)** বলা হয়।
+            """)
+
+        with st.expander(
+            "২. ছোট লোহার পেরেক ডুবে কিন্তু বিরাট লোহার জাহাজ ভেসে থাকে কেন?"
+        ):
+            st.write("""
+            **ব্যাখ্যা (আর্কিমিডিসের নীতি):** কোনো বস্তুকে পানিতে ডোবালে তা নিজের আয়তনের সমান পানি অপসারিত করে। একটি লোহার পেরেকের ভেতর ফাঁপা জায়গা না থাকায় এর গড় ঘনত্ব পানির ঘনত্বের চেয়ে বেশি হয়, ফলে পেরেকটি ডুবে যায়। 
+            
+            কিন্তু লোহার জাহাজ ভেতরে বিশালাকার ফাঁপা থাকে এবং বায়ুতে পূর্ণ থাকে। ফলে জাহাজের মোট ভরকে তার বিশাল আয়তন দিয়ে ভাগ করলে জাহাজের **গড় ঘনত্ব পানির ঘনত্বের চেয়ে অনেক কম** হয়ে যায়। জাহাজটি যে পরিমাণ পানি অপসারিত করে, তার প্লবতা বল (উর্ধ্বমুখী বল) জাহাজের মোট ওজনের সমান বা বেশি হয়, তাই জাহাজ ভেসে থাকে।
+            """)
+
+        with st.expander(
+            "৩. নদীর পানির চেয়ে সমুদ্রের পানিতে সাঁতার কাটা সহজ কেন?"
+        ):
+            st.write("""
+            **ব্যাখ্যা:** নদীর পানিতে দ্রবীভূত লবণের পরিমাণ খুবই কম থাকে, কিন্তু সমুদ্রের পানিতে প্রচুর পরিমাণে লবণ দ্রবীভূত থাকে। ফলে **সমুদ্রের পানির ঘনত্ব নদীর পানির ঘনত্বের চেয়ে বেশি** হয়। পানির ঘনত্ব বেশি হওয়ায় সমুদ্রের পানি সাঁতারুর ওপর বেশি **উর্ধ্বমুখী প্লবতা বল (Buoyancy Force)** প্রয়োগ করে, যা সাঁতারুকে সহজে ভাসিয়ে রাখে।
+            """)
+
+        with st.expander(
+            "৪. ইটের ওপর হাঁটার চেয়ে ভাঙা ইটের (খোয়া) ওপর হাঁটা কষ্টদায়ক কেন?"
+        ):
+            st.write("""
+            **ব্যাখ্যা (চাপের সূত্র $P = F/A$):** আমরা জানি, চাপ $P = \frac{F}{A}$ (বল ÷ ক্ষেত্রফল)। ইটের সমতল পৃষ্ঠের ক্ষেত্রফল বেশি হওয়ায় পায়ের তলায় প্রয়োগকৃত চাপ কম হয়। কিন্তু ভাঙা ইটের তীক্ষ্ণ ও ধারালো কোণাগুলোর সংস্পর্শ ক্ষেত্রফল ($A$) অত্যন্ত কম। ক্ষেত্রফল কমে গেলে চাপ ($P$) বহুগুণ বেড়ে যায়, যা পায়ের স্নায়ুতে বেশি ব্যথার সৃষ্টি করে।
+            """)
+
+        with st.expander(
+            "৫. শীতের দিনে বিদ্যুতের তার টানটান হয়ে ছিঁড়ে যায় কেন?"
+        ):
+            st.write("""
+            **ব্যাখ্যা (তাপীয় সংকোচন):** যেকোনো কঠিন পদার্থ ঠান্ডা হলে সংকুচিত হয়। শীতকালে তাপমাত্রা কমে গেলে বিদ্যুতের তামার বা অ্যালুমিনিয়ামের তার সংকুচিত হয়ে দৈর্ঘ্য ছোট হতে চায়। তার দুটি খুঁটির সাথে শক্ত করে বাঁধা থাকায় সংকোচনজনিত টান বল অতিরিক্ত বৃদ্ধি পায় এবং তার ছিঁড়ে যায়।
+            """)
+
+        with st.expander("৬. শীতের দিনে ভেজা কাপড় দ্রুত শুকায় কেন?"):
+            st.write("""
+            **ব্যাখ্যা:** কাপড় শুকানো নির্ভর করে বাতাসের **আপেক্ষিক আর্দ্রতার (Relative Humidity)** ওপর। শীতকালে বাতাসে জলীয় বাষ্পের পরিমাণ অত্যন্ত কম থাকে অর্থাৎ বাতাস শুষ্ক থাকে। শুষ্ক বাতাস দ্রুত ভেজা কাপড় থেকে পানি বাষ্পীভবন করে শুষে নিতে পারে, তাই শীতকালে কাপড় দ্রুত শুকায়।
+            """)
+
+    with tab2:
+        st.markdown("### গতিবিজ্ঞানের সূত্র প্রতিপাদন (Kinematics)")
+        st.latex(r"v = u + at")
+        st.latex(r"s = \left(\frac{u + v}{2}\right)t")
+        st.latex(r"s = ut + \frac{1}{2}at^2")
+        st.latex(r"v^2 = u^2 + 2as")
+
+        st.markdown("### আর্কিমিডিস ও প্লবতার সূত্র")
+        st.latex(r"F_{buoyancy} = V \cdot \rho \cdot g")
+        st.latex(r"P = h \cdot \rho \cdot g")
+
+# ==========================================
+# 6. BANGLADESH CLASS 9-10 PHYSICS CURRICULUM
+# ==========================================
+elif st.session_state.current_page == "NCTB Curriculum":
+    if st.button("⬅️ হোমে ফিরে যান"):
+        st.session_state.current_page = "Home"
+        st.rerun()
+
+    st.title("📖 ৯ম-১০ম শ্রেণি পদার্থবিজ্ঞান কারিকুলাম (NCTB)")
+    st.markdown("---")
+
+    chapters = [
+        (
+            "১. ভৌত রাশি ও পরিমাপ",
+            "রাশি, পরিমাপের একক, মাত্রা, ভার্নিয়ার স্কেল, স্লাইড ক্যালিপার্স।",
+            r"L = M + (V \times VC)",
+        ),
+        (
+            "২. গতি (Motion)",
+            "দূরত্ব, সরণ, বেগ, ত্বরণ, গতির সমীকরণ ও পড়ন্ত বস্তুর সূত্র।",
+            r"v = u + at, \quad s = ut + \frac{1}{2}at^2",
+        ),
+        (
+            "৩. বল (Force)",
+            "নিউটন গতির ৩টি সূত্র, ভরবেগ, মহাকর্ষ বল ও ঘর্ষণ বল।",
+            r"F = ma, \quad p = mv",
+        ),
+        (
+            "৪. কাজ, ক্ষমতা ও শক্তি",
+            "কাজ, গতিশক্তি, বিভবশক্তি, ক্ষমতার হিসাব ও শক্তির সংরক্ষণশীলতা।",
+            r"W = F \cdot s, \quad E_k = \frac{1}{2}mv^2, \quad E_p = mgh",
+        ),
+        (
+            "৫. পদার্থের অবস্থা ও চাপ",
+            "চাপ, ঘনত্ব, প্যাসকেলের সূত্র, আর্কিমিডিসের নীতি ও প্লবতা।",
+            r"P = \frac{F}{A}, \quad P = h\rho g, \quad \rho = \frac{m}{V}",
+        ),
+        (
+            "৬. বস্তুর ওপর তাপের প্রভাব",
+            "তাপ ও তাপমাত্রা, দৈর্ঘ্য সম্প্রসারণ, আপেক্ষিক তাপ ও ক্যালরিমিতি।",
+            r"Q = ms\Delta T, \quad \Delta L = \alpha L_1 \Delta T",
+        ),
+        (
+            "৭. তরঙ্গ ও শব্দ",
+            "পর্যায়বৃত্ত গতি, অনুদৈর্ঘ্য ও অনুপ্রস্থ তরঙ্গ, শব্দের বেগ ও প্রতিধ্বনি।",
+            r"v = f\lambda, \quad d = \frac{v \cdot t}{2}",
+        ),
+        (
+            "৮. আলোর প্রতিফলন",
+            "আয়না/দর্পণ, সমতল ও গোলীয় দর্পণ, বিম্ব গঠন ও বিবর্ধন।",
+            r"\frac{1}{f} = \frac{1}{u} + \frac{1}{v}, \quad m = -\frac{v}{u}",
+        ),
+        (
+            "৯. আলোর প্রতিসরণ",
+            "প্রতিসরণাঙ্ক, সংকট কোণ, পূর্ণ অভ্যন্তরীণ প্রতিফলন ও লেন্স।",
+            r"\eta = \frac{\sin i}{\sin r}, \quad P = \frac{1}{f}",
+        ),
+        (
+            "১০. স্থির তড়িৎ",
+            "আধান, কুলম্বের সূত্র, তড়িৎ ক্ষেত্র ও তড়িৎ বিভব।",
+            r"F = k \frac{q_1 q_2}{r^2}, \quad V = \frac{W}{q}",
+        ),
+        (
+            "১১. চল তড়িৎ",
+            "ওহমের সূত্র, রোদ, শ্রেণী ও সমান্তরাল সার্কিট এবং ক্ষমতা।",
+            r"V = IR, \quad P = VI = I^2R",
+        ),
+        (
+            "১২. তড়িৎ প্রবাহের চৌম্বক ক্রিয়া",
+            "সোলেনয়েড, তড়িচ্চুম্বক, তাড়িতচৌম্বক আবেশ ও ট্রান্সফরমার।",
+            r"\frac{V_p}{V_s} = \frac{N_p}{N_s} = \frac{I_s}{I_p}",
+        ),
+        (
+            "১৩. আধুনিক পদার্থবিজ্ঞান ও ইলেকট্রনিক্স",
+            "তেজস্ক্রিয়তা, এক্স-রে, সেমিকন্ডাক্টর, ডায়োড ও ট্রানজিস্টর।",
+            r"E = mc^2",
+        ),
+        (
+            "১৪. জীবন বাঁচাতে পদার্থবিজ্ঞান",
+            "ইসিজি, এক্স-রে, আল্ট্রাসোনোগ্রাফি, সিটি স্ক্যান ও এমআরআই।",
+            "মেডিকেল ফিজিক্স ও ডায়াগনস্টিক প্রয়োগ।",
+        ),
+    ]
+
+    for chap_title, chap_desc, formula in chapters:
+        with st.expander(f"📌 {chap_title}"):
+            st.write(f"**মূল বিষয়বস্তু:** {chap_desc}")
+            if formula != "মেডিকেল ফিজিক্স ও ডায়াগনস্টিক প্রয়োগ।":
+                st.latex(formula)
+
+# ==========================================
+# 7. CQ SOLVE MODULE
+# ==========================================
 elif st.session_state.current_page == "CQ Solve":
-    if st.button("Back to Home"):
+    if st.button("⬅️ হোমে ফিরে যান"):
         st.session_state.current_page = "Home"
         st.rerun()
 
-    st.title("CQ Solve Module")
+    st.title("📝 সিকিউ সমাধান (Creative Questions)")
     st.markdown("---")
 
-    with st.expander("CQ 1: চল তড়িৎ ও মিশ্র বর্তনী"):
-        st.markdown(
-            "**উদ্দীপক:** V = 100V উৎসের সাথে R1=5, R2=3, R3=4, R4=4, R5=5,"
-            " R6=7 Ohm যুক্ত আছে।"
-        )
-        st.markdown("**গ)** বর্তনীর তুল্যরোধ নির্ণয় কর।")
-        st.markdown("**ঘ)** বর্তনীর মূল তড়িৎপ্রবাহের পরিবর্তন বিশ্লেষণ কর।")
+    with st.expander(
+        "প্রশ্ন ১: ২০m উঁচু থেকে ৫০g ভরের একটি বস্তুকে ফেলে দেওয়া হলো।"
+    ):
+        st.write("""
+        **গ) ভূমি স্পর্শ করার মুহূর্তে বেগ কত?**
+        
+        **সমাধান:**
+        দেওয়া আছে, $u = 0$, $h = 20\text{ m}$, $g = 9.8\text{ m/s}^2$
+        
+        সূত্র: $v^2 = u^2 + 2gh = 0 + 2 \times 9.8 \times 20 = 392$
+        $$\implies v = \sqrt{392} \approx 19.8 \text{ m/s}$$
+        """)
 
-    with st.expander("CQ 2: খনিজ পদার্থের আপেক্ষিক গুরুত্ব"):
-        st.markdown(
-            "**উদ্দীপক:** বায়ুতে খনিজের ভর 250g এবং পানিতে নিমজ্জিত ভর 170g।"
-        )
-        st.markdown("**গ)** খনিজটির আপেক্ষিক গুরুত্ব নির্ণয় কর।")
-
-elif st.session_state.current_page == "Learning Physics Basic":
-    if st.button("Back to Home"):
+# ==========================================
+# 8. BOT DISCUSSION & CALCULATOR
+# ==========================================
+elif st.session_state.current_page == "Physics Bot":
+    if st.button("⬅️ হোমে ফিরে যান"):
         st.session_state.current_page = "Home"
         st.rerun()
 
-    st.title("Learning Physics Basic")
-    st.markdown("---")
-
-    topic = st.selectbox(
-        "বিষয় নির্বাচন করুন",
-        ["ওহমের সূত্র", "খনিজের ঘনত্ব", "গতিবিদ্যা"],
-    )
-
-    if topic == "ওহমের সূত্র":
-        v = st.number_input("ভোল্টেজ V (Volts)", value=100.0)
-        r = st.number_input("রোধ R (Ohms)", value=14.5)
-        if r > 0:
-            st.code(
-                f"// CALCULATED OUTPUT\nI = V / R = {v} / {r} = {v/r:.3f}"
-                " Amperes",
-                language="python",
-            )
-
-# ==========================================
-# 5. SMART CALCULATOR & CHATBOT PAGE
-# ==========================================
-elif st.session_state.current_page == "Bot Discussion":
-    if st.button("Back to Home"):
-        st.session_state.current_page = "Home"
-        st.rerun()
-
-    st.title("Discussion Any Problem with Bot")
-    st.caption("Interactive Physics Solving & Calculation Engine")
+    st.title("🤖 ফিজিক্স চ্যাটবট ও ক্যালকুলেটর")
     st.markdown("---")
 
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
 
-    user_input = st.chat_input("গাণিতিক হিসাব বা যেকোনো প্রশ্ন লিখুন...")
+    user_query = st.chat_input("প্রশ্ন বা গাণিতিক হিসাব লিখুন (যেমন: 250*9.8)...")
 
-    if user_input:
+    if user_query:
         st.session_state.chat_history.append(
-            {"role": "user", "content": user_input}
+            {"role": "user", "content": user_query}
         )
         with st.chat_message("user"):
-            st.write(user_input)
+            st.write(user_query)
 
-        text = user_input.lower().strip()
+        text = user_query.lower().strip()
 
-        # Bot Response Decision Engine
-        # 1. Casual Chat / Greetings
         if any(
             w in text
-            for w in [
-                "hi",
-                "hello",
-                "হাই",
-                "হ্যালো",
-                "কেমন আছো",
-                "হেই",
-                "কেমন আছেন",
-            ]
+            for w in ["hi", "hello", "হাই", "হ্যালো", "কেমন আছো", "কেমন আছেন"]
         ):
-            bot_reply = (
-                "হ্যালো! আমি ভালো আছি। আপনার গাণিতিক সমস্যা বা ফিজিক্সের যেকোনো"
-                " প্রশ্ন লিখে জানান।"
-            )
-
-        # 2. Math Calculation Logic Engine (e.g., 100/14.5 or 250*9.8)
+            reply = "হ্যালো! আমি ভালো আছি। আপনার ফিজিক্সের যেকোনো প্রশ্ন বা সমীকরণ আমাকে পাঠাতে পারেন।"
         elif re.match(r"^[0-9\.\+\-\*\/\(\)\s]+$", text):
             try:
-                calc_result = eval(text)
-                bot_reply = (
-                    f"গাণিতিক সমীকরণের ফলাফল:\n`{text}` = **{calc_result:.4f}**"
-                )
-            except Exception:
-                bot_reply = (
-                    "গাণিতিক রাশিটি গণনা করতে সমস্যা হয়েছে। অনুগ্রহ করে সঠিক"
-                    " সংখ্যা ও চিহ্ন ব্যবহার করুন।"
-                )
-
-        # 3. Step-by-Step Physics Problem Solving Guidance
-        elif "সার্কিট" in text or "circuit" in text or "ohm" in text:
-            bot_reply = """**বর্তনী ও ওহমের সূত্র সমাধানের ধাপ:**
-১. সমান্তরাল রোধগুলোর জন্য: 1/Req = 1/R1 + 1/R2
-২. শ্রেণী সমবায়ের জন্য: Req = R1 + R2
-৩. মূল প্রবাহ নির্ণয়: I = V / Req"""
-
-        elif "খনিজ" in text or "density" in text or "ঘনত্ব" in text:
-            bot_reply = """**খনিজের ঘনত্ব নির্ণয়ের নিয়ম:**
-১. অপসারিত পানির ভর বের করুন: m_water = m_air - m_water
-২. আপেক্ষিক গুরুত্ব (SG) = m_air / m_water
-৩. ঘনত্ব (rho) = SG * 1000 kg/m^3"""
-
+                ans = eval(text)
+                reply = f"গাণিতিক ফলাফল: `{text}` = **{ans}**"
+            except:
+                reply = "সঠিক গাণিতিক সংখ্যা ও চিহ্ন ব্যবহার করুন।"
         else:
-            bot_reply = f"""**সমাধান নির্দেশিকা ({user_input}):**
-১. দেওয়া মানগুলো চিহ্নিত করুন।
-২. সরাসরি ক্যালকুলেটর হিসেবে মান বসিয়ে হিসাব করতে যেকোনো সংখ্যা ও চিহ্ন পাঠাতে পারেন (যেমন: 100/14.5)।
-৩. বড় গাণিতিক সমস্যায় সূত্র অনুযায়ী ধাপগুলো মেনে মান বসিয়ে সমাধান করুন।"""
+            reply = f"আপনার প্রশ্নটি ({user_query}) লিপিবদ্ধ করা হয়েছে। যেকোনো গাণিতিক হিসেব সরাসরি টাইপ করে ফলাফল পেয়ে যাবেন।"
 
         st.session_state.chat_history.append(
-            {"role": "assistant", "content": bot_reply}
+            {"role": "assistant", "content": reply}
         )
         with st.chat_message("assistant"):
-            st.write(bot_reply)
+            st.write(reply)
+
+# ==========================================
+# 9. THEME & GALLERY BACKGROUND SETTINGS
+# ==========================================
+elif st.session_state.current_page == "Theme Settings":
+    if st.button("⬅️ হোমে ফিরে যান"):
+        st.session_state.current_page = "Home"
+        st.rerun()
+
+    st.title("🎨 থিম ও ব্যাকগ্রাউন্ড সেটিংস")
+    st.markdown("---")
+
+    st.subheader("গ্যালারি থেকে ব্যাকগ্রাউন্ড ছবি আপলোড করুন")
+    uploaded_file = st.file_uploader(
+        "পছন্দের ছবি বেছে নিন (JPG, PNG)", type=["jpg", "jpeg", "png"]
+    )
+
+    if uploaded_file is not None:
+        bytes_data = uploaded_file.getvalue()
+        base64_img = base64.b64encode(bytes_data).decode()
+        st.session_state.bg_image = base64_img
+        st.success(
+            "ব্যাকগ্রাউন্ড থিম সফলভাবে পরিবর্তন করা হয়েছে! হোমে গিয়ে দেখুন।"
+        )
+
+    if st.session_state.bg_image:
+        if st.button("ডিফল্ট ডার্ক থিমে ফিরে যান"):
+            st.session_state.bg_image = None
+            st.rerun()
