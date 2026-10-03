@@ -105,21 +105,21 @@ st.markdown(
 # 3. SIDEBAR NAVIGATION (TOP-LEFT MENU)
 # ==========================================
 with st.sidebar:
-    st.title("📌 মেনু বার")
+    st.title("...মেনু বার")
 
     if st.button("🏠 হোম স্ক্রিন (Home)"):
         st.session_state.current_page = "Home"
         st.rerun()
 
-    if st.button("📊 দীপ এনালাইসিস (Deep Analysis)"):
+    if st.button("🧠 দীপ এনালাইসিস (Deep Analysis)"):
         st.session_state.current_page = "Deep Analysis"
         st.rerun()
 
-    if st.button("📖 ৯-১০ম ফিজিক্স (NCTB Physics)"):
+    if st.button("📕 ৯-১০ম ফিজিক্স (NCTB Physics)"):
         st.session_state.current_page = "NCTB Curriculum"
         st.rerun()
 
-    if st.button("📝 সিকিউ সলভ (CQ Solve)"):
+    if st.button("⏳ সিকিউ সলভ (CQ Solve)"):
         st.session_state.current_page = "CQ Solve"
         st.rerun()
 
