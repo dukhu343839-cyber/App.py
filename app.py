@@ -151,18 +151,18 @@ if st.session_state.current_page == "Home":
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("📊 দীপ এনালাইসিস (Deep Analysis)", key="home_deep"):
+        if st.button("🧠 দীপ এনালাইসিস (Deep Analysis)", key="home_deep"):
             st.session_state.current_page = "Deep Analysis"
             st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        if st.button("📖 লার্নিং ফিজিক্স বেসিক (৯ম-১০ম)", key="home_basic"):
+        if st.button("📕 লার্নিং ফিজিক্স বেসিক (৯ম-১০ম)", key="home_basic"):
             st.session_state.current_page = "NCTB Curriculum"
             st.rerun()
 
     with col2:
-        if st.button("📝 সিকিউ সলভ (CQ Solve)", key="home_cq"):
+        if st.button("📋 সিকিউ সলভ (CQ Solve)", key="home_cq"):
             st.session_state.current_page = "CQ Solve"
             st.rerun()
 
@@ -180,7 +180,7 @@ elif st.session_state.current_page == "Deep Analysis":
         st.session_state.current_page = "Home"
         st.rerun()
 
-    st.title("📊 দীপ এনালাইসিস ও বাস্তবসম্মত উদাহরণ")
+    st.title("🧠 দীপ এনালাইসিস ও বাস্তবসম্মত উদাহরণ")
     st.markdown("---")
 
     tab1, tab2 = st.tabs(
