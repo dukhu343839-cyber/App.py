@@ -138,7 +138,7 @@ if st.session_state.current_page == "Home":
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown(
         "<h1 style='text-align: center; color: #38BDF8;'>পদার্থবিজ্ঞান"
-        "অনুশীলন ক্লাব</h1>",
+        "   অনুশীলন ক্লাব</h1>",
         unsafe_allow_html=True,
     )
     st.markdown(
