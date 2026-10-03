@@ -1,423 +1,367 @@
-import json
 import math
+import re
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ==========================================
-# 1. PAGE CONFIGURATION & THEME ENGINE
+# 1. PAGE CONFIGURATION & CSS STYLES
 # ==========================================
 st.set_page_config(
-    page_title="PHYSICS & MINERAL SOLVER ENGINE",
+    page_title="Physics Core Engine",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Custom Premium Chalkboard CSS Injection (Zero Emojis)
+# Dark Minimalist Slate Style CSS
 st.markdown(
     """
     <style>
-    /* Dark Green Chalkboard Aesthetics */
     .stApp {
-        background-color: #0A1610;
-        color: #E2E8F0;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background-color: #0D1117;
+        color: #C9D1D9;
+        font-family: 'Inter', -apple-system, sans-serif;
     }
     
-    /* Header & Navigation Style */
-    .main-header {
-        font-family: 'Fira Code', 'Courier New', monospace;
-        color: #22C55E;
-        font-weight: 700;
-        letter-spacing: 1px;
-        border-bottom: 2px solid #132E20;
-        padding-bottom: 10px;
+    /* Clean Home Screen Option Cards */
+    .option-box {
+        background-color: #161B22;
+        border: 1px solid #30363D;
+        border-radius: 10px;
+        padding: 25px;
+        text-align: center;
         margin-bottom: 20px;
-    }
-    
-    /* IDE/Coding Terminal Monospace Card */
-    .code-container {
-        background-color: #050D08;
-        border: 1px solid #1A3A29;
-        border-radius: 6px;
-        padding: 16px;
-        font-family: 'Fira Code', 'Courier New', monospace;
-        color: #A7F3D0;
-        margin-bottom: 15px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    }
-    
-    .code-title {
-        color: #38BDF8;
-        font-weight: bold;
-        font-size: 1.05rem;
-        border-bottom: 1px solid #132E20;
-        padding-bottom: 6px;
-        margin-bottom: 10px;
-    }
-
-    .code-tag {
-        background-color: #132E20;
-        color: #4ADE80;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        display: inline-block;
-        margin-bottom: 8px;
-    }
-
-    /* Streamlit UI Components Tweaks */
-    div[data-testid="stSidebar"] {
-        background-color: #060E0A;
-        border-right: 1px solid #132E20;
+        transition: all 0.3s ease;
     }
     
     .stButton > button {
-        background-color: #132E20;
-        color: #4ADE80;
-        border: 1px solid #22C55E;
-        border-radius: 4px;
-        font-family: 'Fira Code', monospace;
-        transition: all 0.2s ease;
+        width: 100%;
+        background-color: #161B22;
+        color: #58A6FF;
+        border: 1px solid #30363D;
+        border-radius: 8px;
+        padding: 20px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        font-family: monospace;
     }
     
     .stButton > button:hover {
-        background-color: #22C55E;
-        color: #0A1610;
+        background-color: #21262D;
+        border-color: #58A6FF;
+        color: #79C0FF;
     }
 
-    /* Hide standard header decoration */
-    header[data-testid="stHeader"] {
-        background-color: rgba(10, 22, 16, 0.85);
+    div[data-testid="stSidebar"] {
+        background-color: #161B22;
+        border-right: 1px solid #30363D;
     }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-# ==========================================
-# 2. SESSION STATE INITIALIZATION
-# ==========================================
-if "problems" not in st.session_state:
-    st.session_state.problems = [
-        {
-            "id": 1,
-            "category": "Current Electricity / চল তড়িৎ",
-            "title": "Complex Circuit Equivalent Resistance and Total Current",
-            "code_format": """// CIRCUIT INPUT CONFIGURATION
-V_source = 100.0 // Volts
-R1 = 5.0; R2 = 3.0; R3 = 4.0; R4 = 4.0;
-R5 = 5.0; R6 = 7.0; R7 = 2.0; R8 = 2.0; // Ohms
-
-// EQUIVALENT RESISTANCE CALCULATION
-R_p1 = (R3 * R4) / (R3 + R4);           // Parallel branch R3||R4 = 2.0 Ohm
-R_s1 = R2 + R_p1;                       // Series branch = 5.0 Ohm
-R_p2 = (R_s1 * R5) / (R_s1 + R5);       // Parallel branch = 2.5 Ohm
-R_eq = R1 + R_p2 + R6;                  // Total Equivalent Resistance = 14.5 Ohm
-
-// TOTAL CURRENT (OHM'S LAW)
-I_total = V_source / R_eq;              // I = 100 / 14.5 = 6.90 Amperes""",
-            "question_bn": "একটি V = 100V উৎসের সাথে R1=5Ω, R2=3Ω, R3=4Ω, R4=4Ω, R5=5Ω, R6=7Ω, R7=2Ω, R8=2Ω রোধের একটি মিশ্র বর্তনী যুক্ত আছে। বর্তনীর তুল্যরোধ এবং মূল প্রবাহ নির্ণয় কর।",
-            "question_en": "A complex circuit connected to V = 100V source consists of resistors R1=5Ω, R2=3Ω, R3=4Ω, R4=4Ω, R5=5Ω, R6=7Ω, R7=2Ω, R8=2Ω. Find equivalent resistance Req and total current I.",
-            "formula": r"V = I \cdot R_{eq} \implies I = \frac{V}{R_{eq}}",
-            "difficulty": "Hard",
-        },
-        {
-            "id": 2,
-            "category": "Mineral & Matter Physics / খনিজ পদার্থবিজ্ঞান",
-            "title": "Mineral Specific Gravity and Density Determination",
-            "code_format": """// MINERAL METRICS DATA
-m_air = 250.0;    // Mass in air (grams)
-m_water = 170.0;  // Mass in water (grams)
-rho_water = 1000; // Density of water (kg/m^3)
-
-// ARCHIMEDES PRINCIPLE COMPUTATION
-m_displaced = m_air - m_water;          // Displaced water mass = 80.0 g
-SG = m_air / m_displaced;               // Specific Gravity = 3.125
-rho_mineral = SG * rho_water;           // Density = 3125.0 kg/m^3""",
-            "question_bn": "একটি খনিজ নমুনার বায়ুতে ভর ma = 250 g এবং পানিতে ভর mw = 170 g। খনিজটির আপেক্ষিক গুরুত্ব (SG) এবং ঘনত্ব (rho) নির্ণয় কর।",
-            "question_en": "A mineral sample weighs ma = 250 g in air and mw = 170 g in water. Calculate the specific gravity (SG) and mass density (rho) of the mineral.",
-            "formula": (
-                r"SG = \frac{m_a}{m_a - m_w}, \quad \rho = SG \times"
-                r" 1000\text{ kg/m}^3"
-            ),
-            "difficulty": "Medium",
-        },
-    ]
-
-if "game_score" not in st.session_state:
-    st.session_state.game_score = 0
-if "game_step" not in st.session_state:
-    st.session_state.game_step = 0
+# Session State Initialization
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "Home"
 
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [
-        {
-            "role": "assistant",
-            "content": (
-                "Physics Engine Assistant Online. Ask any analytical query"
-                " regarding circuit theory, mechanics, or mineral dynamics."
-            ),
-        }
-    ]
+    st.session_state.chat_history = [{
+        "role": "assistant",
+        "content": (
+            "হ্যালো! আমি আপনার ফিজিক্স অ্যাসিস্ট্যান্ট। আমাকে যেকোনো গাণিতিক"
+            " হিসাব, হাই-হ্যালো বা ফিজিক্সের সমস্যা জিজ্ঞেস করতে পারেন।"
+        ),
+    }]
 
 # ==========================================
-# 3. TOP BAR NAVIGATION & MINI GAME CONTROLLER
+# 2. SIDEBAR MENU & 2D ANIMATED GAME
 # ==========================================
-col_title, col_top_right = st.columns([3, 1])
+with st.sidebar:
+    st.title("NAVIGATION & TOOLS")
 
-with col_title:
-    st.markdown(
-        "<div class='main-header'>PHYSICS & MINERAL ENGINE v2.0</div>",
-        unsafe_allow_html=True,
-    )
+    if st.button("HOME SCREEN"):
+        st.session_state.current_page = "Home"
+        st.rerun()
 
-with col_top_right:
-    # Popover for Top Right Corner Mini-Game & Quick Settings
-    with st.popover("Mini Game / Quick Tool"):
-        st.markdown("**Physics Quick Challenge**")
-        st.caption("Test your physics speed solving skills.")
+    st.markdown("---")
+    st.subheader("2D PHYSICS GAME")
+    st.caption("Projectile Target Hit Simulation")
 
-        # Game Questions Logic
-        questions = [
-            {
-                "q": "Two 4 Ohm resistors in parallel give Req = ?",
-                "opts": ["8 Ohm", "2 Ohm", "4 Ohm"],
-                "ans": "2 Ohm",
-            },
-            {
-                "q": (
-                    "Formula for fluid pressure at depth h is:"
-                ),
-                "opts": ["P = h*rho*g", "P = F*A", "P = m*g"],
-                "ans": "P = h*rho*g",
-            },
-            {
-                "q": "What is the SI unit of Electric Potential?",
-                "opts": ["Ampere", "Volt", "Joule"],
-                "ans": "Volt",
-            },
-        ]
-
-        step = st.session_state.game_step
-        if step < len(questions):
-            curr_q = questions[step]
-            st.write(f"Q{step+1}: {curr_q['q']}")
-            user_ans = st.radio(
-                "Options:", curr_q["opts"], key=f"q_opt_{step}"
-            )
-            if st.button("Submit Answer", key=f"sub_{step}"):
-                if user_ans == curr_q["ans"]:
-                    st.session_state.game_score += 10
-                    st.success("Correct Answer (+10 PTS)")
-                else:
-                    st.error("Incorrect Answer")
-                st.session_state.game_step += 1
-                st.rerun()
-        else:
-            st.write(
-                f"Game Complete! Final Score: {st.session_state.game_score} PTS"
-            )
-            if st.button("Reset Game"):
-                st.session_state.game_score = 0
-                st.session_state.game_step = 0
-                st.rerun()
-
-# Language & Settings Toolbar
-st.sidebar.markdown("### SYSTEM SETTINGS")
-ui_lang = st.sidebar.selectbox("Language / ভাষা", ["English", "বাংলা"])
-code_font_toggle = st.sidebar.checkbox("IDE Code View Style", value=True)
-
-# Four Navigation Modules
-st.markdown("### MODULE SELECTOR")
-nav_module = st.radio(
-    "",
-    [
-        "Deep Analysis",
-        "CQ Solve",
-        "Learning Physics Basic",
-        "Discussion Any Problem with Bot",
-    ],
-    horizontal=True,
-)
-
-st.markdown("---")
-
-# ==========================================
-# MODULE 1: DEEP ANALYSIS
-# ==========================================
-if nav_module == "Deep Analysis":
-    st.subheader("Deep Numerical & Analytical Breakdown")
-
-    for prob in st.session_state.problems:
-        st.markdown(
-            f"""
-        <div class="code-container">
-            <div class="code-tag">ID: #{prob['id']} | CATEGORY: {prob['category']} | DIFFICULTY: {prob['difficulty']}</div>
-            <div class="code-title">{prob['title']}</div>
+    # 2D Interactive Cannon Game HTML5 Canvas Engine
+    game_canvas_code = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body { margin: 0; background: #0D1117; color: #C9D1D9; font-family: monospace; text-align: center; }
+        canvas { background: #161B22; border: 1px solid #30363D; border-radius: 6px; margin-top: 8px; }
+        .controls { font-size: 11px; margin-bottom: 5px; }
+        input { background: #21262D; color: #58A6FF; border: 1px solid #30363D; width: 45px; border-radius: 3px; padding: 2px; }
+        button { background: #21262D; color: #79C0FF; border: 1px solid #30363D; padding: 3px 8px; border-radius: 3px; cursor: pointer; }
+    </style>
+    </head>
+    <body>
+        <div class="controls">
+            Velocity: <input type="number" id="vel" value="50">
+            Angle: <input type="number" id="ang" value="45">
+            <button onclick="fire()">FIRE</button>
         </div>
-        """,
-            unsafe_allow_html=True,
-        )
+        <canvas id="gameCanvas" width="270" height="170"></canvas>
+        <div id="status" style="font-size:11px; color:#79C0FF; margin-top:4px;">Target at 200m. Launch cannon!</div>
 
-        st.markdown("**Structured Problem Statement:**")
-        q_text = (
-            prob["question_bn"] if ui_lang == "বাংলা" else prob["question_en"]
-        )
-        st.info(q_text)
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let targetX = 200;
+        let ball = {x: 10, y: 160, vx: 0, vy: 0, active: false};
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Ground
+            ctx.fillStyle = "#30363D";
+            ctx.fillRect(0, 165, canvas.width, 5);
+            
+            // Target
+            ctx.fillStyle = "#F85149";
+            ctx.fillRect(targetX, 150, 12, 15);
+            
+            // Cannon
+            ctx.fillStyle = "#58A6FF";
+            ctx.fillRect(5, 155, 12, 10);
+            
+            // Ball Animation
+            if (ball.active) {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, 3, 0, Math.PI*2);
+                ctx.fillStyle = "#79C0FF";
+                ctx.fill();
+            }
+        }
+        
+        function fire() {
+            if (ball.active) return;
+            let v = parseFloat(document.getElementById('vel').value);
+            let a = parseFloat(document.getElementById('ang').value) * Math.PI / 180;
+            ball.x = 10;
+            ball.y = 160;
+            ball.vx = v * Math.cos(a) * 0.15;
+            ball.vy = -v * Math.sin(a) * 0.15;
+            ball.active = true;
+            document.getElementById('status').innerText = "In Motion...";
+            animate();
+        }
+        
+        function animate() {
+            if (!ball.active) return;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.vy += 0.12; // Gravity simulation
+            
+            if (ball.y >= 160) {
+                ball.y = 160;
+                ball.active = false;
+                if (Math.abs(ball.x - targetX) < 12) {
+                    document.getElementById('status').innerText = "TARGET DESTROYED! Score +100";
+                    targetX = 90 + Math.random() * 140;
+                } else {
+                    document.getElementById('status').innerText = "MISSED! Adjust angle/velocity.";
+                }
+            }
+            draw();
+            if (ball.active) requestAnimationFrame(animate);
+        }
+        draw();
+    </script>
+    </body>
+    </html>
+    """
+    components.html(game_canvas_code, height=250)
 
-        if code_font_toggle:
-            st.markdown("**Code-Style Formula & Variable Logic:**")
-            st.code(prob["code_format"], language="javascript")
-
-        st.markdown("**Mathematical Expression:**")
-        st.latex(prob["formula"])
-        st.markdown("---")
+    st.markdown("---")
+    st.subheader("SETTINGS")
+    st.selectbox("Theme Mode", ["Dark Slate", "Chalkboard Green"])
 
 # ==========================================
-# MODULE 2: CQ SOLVE (CREATIVE QUESTIONS)
+# 3. HOME SCREEN (ONLY 4 OPTIONS)
 # ==========================================
-elif nav_module == "CQ Solve":
-    st.subheader("Creative Question (CQ) Solver")
+if st.session_state.current_page == "Home":
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
 
-    col_s, col_f = st.columns([2, 1])
-    search_term = col_s.text_input("Filter CQs by term...", "")
-    category_filter = col_f.selectbox(
-        "Category",
-        [
-            "All Categories",
-            "Current Electricity / চল তড়িৎ",
-            "Mineral & Matter Physics / খনিজ পদার্থবিজ্ঞান",
-        ],
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Deep Analysis\n(দীপ এনালাইসিস)", key="btn_deep"):
+            st.session_state.current_page = "Deep Analysis"
+            st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        if st.button(
+            "Learning Physics Basic\n(লার্নিং ফিজিক্স বেসিক)", key="btn_basic"
+        ):
+            st.session_state.current_page = "Learning Physics Basic"
+            st.rerun()
+
+    with col2:
+        if st.button("CQ Solve\n(সিকিউ সলভ)", key="btn_cq"):
+            st.session_state.current_page = "CQ Solve"
+            st.rerun()
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        if st.button(
+            "Discussion Any Problem with Bot\n(ডিসকাশন এনি প্রবলেম উইথ বট)",
+            key="btn_bot",
+        ):
+            st.session_state.current_page = "Bot Discussion"
+            st.rerun()
+
+# ==========================================
+# 4. MODULE PAGES
+# ==========================================
+elif st.session_state.current_page == "Deep Analysis":
+    if st.button("Back to Home"):
+        st.session_state.current_page = "Home"
+        st.rerun()
+
+    st.title("Deep Analysis Module")
+    st.markdown("---")
+    st.markdown("**জটিল সার্কিট বিশ্লেষণ:**")
+    st.code(
+        """// ADVANCED CIRCUIT PARSING MATRIX
+V_input = 100.0 // Volts
+Req_calculated = 14.5 // Ohms
+I_total = V_input / Req_calculated // 6.90 Amperes
+Power_Dissipation = (I_total^2) * Req_calculated // 690.0 Watts""",
+        language="cpp",
     )
 
-    filtered = st.session_state.problems
-    if category_filter != "All Categories":
-        filtered = [p for p in filtered if p["category"] == category_filter]
+elif st.session_state.current_page == "CQ Solve":
+    if st.button("Back to Home"):
+        st.session_state.current_page = "Home"
+        st.rerun()
 
-    for prob in filtered:
-        with st.expander(f"CQ #{prob['id']}: {prob['title']}"):
-            st.markdown(
-                "**Stem / উদ্দীপক:** "
-                + (
-                    prob["question_bn"]
-                    if ui_lang == "বাংলা"
-                    else prob["question_en"]
-                )
-            )
-            st.markdown("**Core Formula:**")
-            st.latex(prob["formula"])
+    st.title("CQ Solve Module")
+    st.markdown("---")
 
-            st.markdown("**Executable Logic View:**")
-            st.code(prob["code_format"], language="cpp")
+    with st.expander("CQ 1: চল তড়িৎ ও মিশ্র বর্তনী"):
+        st.markdown(
+            "**উদ্দীপক:** V = 100V উৎসের সাথে R1=5, R2=3, R3=4, R4=4, R5=5,"
+            " R6=7 Ohm যুক্ত আছে।"
+        )
+        st.markdown("**গ)** বর্তনীর তুল্যরোধ নির্ণয় কর।")
+        st.markdown("**ঘ)** বর্তনীর মূল তড়িৎপ্রবাহের পরিবর্তন বিশ্লেষণ কর।")
 
-# ==========================================
-# MODULE 3: LEARNING PHYSICS BASIC
-# ==========================================
-elif nav_module == "Learning Physics Basic":
-    st.subheader("Interactive Physics Fundamentals Engine")
+    with st.expander("CQ 2: খনিজ পদার্থের আপেক্ষিক গুরুত্ব"):
+        st.markdown(
+            "**উদ্দীপক:** বায়ুতে খনিজের ভর 250g এবং পানিতে নিমজ্জিত ভর 170g।"
+        )
+        st.markdown("**গ)** খনিজটির আপেক্ষিক গুরুত্ব নির্ণয় কর।")
+
+elif st.session_state.current_page == "Learning Physics Basic":
+    if st.button("Back to Home"):
+        st.session_state.current_page = "Home"
+        st.rerun()
+
+    st.title("Learning Physics Basic")
+    st.markdown("---")
 
     topic = st.selectbox(
-        "Select Fundamental Module",
-        [
-            "1. Ohm's Law & Circuit Analysis",
-            "2. Mineral Hydrostatics & Hydrodynamic Pressure",
-            "3. Kinematic Equations of Motion",
-        ],
+        "বিষয় নির্বাচন করুন",
+        ["ওহমের সূত্র", "খনিজের ঘনত্ব", "গতিবিদ্যা"],
     )
 
-    if "Ohm's Law" in topic:
-        st.markdown("#### Ohm's Law Calculation Engine")
-        col1, col2 = st.columns(2)
-        v_in = col1.number_input("Voltage V (Volts)", value=100.0)
-        r_in = col2.number_input("Resistance R (Ohms)", value=14.5)
-
-        if r_in > 0:
-            i_out = v_in / r_in
+    if topic == "ওহমের সূত্র":
+        v = st.number_input("ভোল্টেজ V (Volts)", value=100.0)
+        r = st.number_input("রোধ R (Ohms)", value=14.5)
+        if r > 0:
             st.code(
-                f"// EXECUTION OUTPUT\nVoltage = {v_in} V\nResistance ="
-                f" {r_in} Ohm\nCurrent I = {i_out:.4f} Amperes",
+                f"// CALCULATED OUTPUT\nI = V / R = {v} / {r} = {v/r:.3f}"
+                " Amperes",
                 language="python",
             )
 
-    elif "Mineral Hydrostatics" in topic:
-        st.markdown("#### Mineral Density & Archimedes Analysis")
-        col1, col2 = st.columns(2)
-        m_a = col1.number_input("Mass in Air (g)", value=250.0)
-        m_w = col2.number_input("Mass in Water (g)", value=170.0)
-
-        if m_a > m_w:
-            sg = m_a / (m_a - m_w)
-            density = sg * 1000.0
-            st.code(
-                f"// ARCHIMEDES COMPUTATION\nDisplaced Mass = {m_a - m_w}"
-                f" g\nSpecific Gravity = {sg:.3f}\nCalculated Density ="
-                f" {density:.2f} kg/m^3",
-                language="python",
-            )
-
-    elif "Kinematic Equations" in topic:
-        st.markdown("#### Projectile & Displacement Physics")
-        u = st.number_input("Initial Velocity u (m/s)", value=20.0)
-        a = st.number_input("Acceleration a (m/s^2)", value=9.8)
-        t = st.number_input("Time t (seconds)", value=5.0)
-
-        s = (u * t) + (0.5 * a * (t**2))
-        v = u + (a * t)
-        st.code(
-            f"// KINEMATICS MATRIX\nFinal Velocity v = {v:.2f} m/s\nTotal"
-            f" Displacement s = {s:.2f} meters",
-            language="python",
-        )
-
 # ==========================================
-# MODULE 4: DISCUSSION ANY PROBLEM WITH BOT
+# 5. SMART CALCULATOR & CHATBOT PAGE
 # ==========================================
-elif nav_module == "Discussion Any Problem with Bot":
-    st.subheader("Physics AI Discussion Bot")
-    st.caption(
-        "Interactive console for physics algorithms, mineral equations, and"
-        " circuit troubleshooting."
-    )
+elif st.session_state.current_page == "Bot Discussion":
+    if st.button("Back to Home"):
+        st.session_state.current_page = "Home"
+        st.rerun()
+
+    st.title("Discussion Any Problem with Bot")
+    st.caption("Interactive Physics Solving & Calculation Engine")
+    st.markdown("---")
 
     for msg in st.session_state.chat_history:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
 
-    user_query = st.chat_input("Enter physics problem or variable query...")
+    user_input = st.chat_input("গাণিতিক হিসাব বা যেকোনো প্রশ্ন লিখুন...")
 
-    if user_query:
+    if user_input:
         st.session_state.chat_history.append(
-            {"role": "user", "content": user_query}
+            {"role": "user", "content": user_input}
         )
         with st.chat_message("user"):
-            st.write(user_query)
+            st.write(user_input)
 
-        q_lower = user_query.lower()
-        if "ohm" in q_lower or "circuit" in q_lower or "বর্তনী" in q_lower:
-            bot_resp = (
-                "Ohm's Law Statement: V = I * R. In complex circuits,"
-                " simplify parallel branches using 1/Req = sum(1/Rn) and series"
-                " branches using Req = sum(Rn)."
+        text = user_input.lower().strip()
+
+        # Bot Response Decision Engine
+        # 1. Casual Chat / Greetings
+        if any(
+            w in text
+            for w in [
+                "hi",
+                "hello",
+                "হাই",
+                "হ্যালো",
+                "কেমন আছো",
+                "হেই",
+                "কেমন আছেন",
+            ]
+        ):
+            bot_reply = (
+                "হ্যালো! আমি ভালো আছি। আপনার গাণিতিক সমস্যা বা ফিজিক্সের যেকোনো"
+                " প্রশ্ন লিখে জানান।"
             )
-        elif "mineral" in q_lower or "density" in q_lower or "খনিজ" in q_lower:
-            bot_resp = (
-                "Mineral Density Protocol: Specific Gravity (SG) = Mass_Air /"
-                " (Mass_Air - Mass_Water). Density = SG * 1000 kg/m^3."
-            )
-        elif "pressure" in q_lower or "চাপ" in q_lower:
-            bot_resp = (
-                "Fluid/Mine Pressure Logic: Hydrostatic Pressure P = h * rho *"
-                " g, where h is depth, rho is fluid density, and g = 9.8"
-                " m/s^2."
-            )
+
+        # 2. Math Calculation Logic Engine (e.g., 100/14.5 or 250*9.8)
+        elif re.match(r"^[0-9\.\+\-\*\/\(\)\s]+$", text):
+            try:
+                calc_result = eval(text)
+                bot_reply = (
+                    f"গাণিতিক সমীকরণের ফলাফল:\n`{text}` = **{calc_result:.4f}**"
+                )
+            except Exception:
+                bot_reply = (
+                    "গাণিতিক রাশিটি গণনা করতে সমস্যা হয়েছে। অনুগ্রহ করে সঠিক"
+                    " সংখ্যা ও চিহ্ন ব্যবহার করুন।"
+                )
+
+        # 3. Step-by-Step Physics Problem Solving Guidance
+        elif "সার্কিট" in text or "circuit" in text or "ohm" in text:
+            bot_reply = """**বর্তনী ও ওহমের সূত্র সমাধানের ধাপ:**
+১. সমান্তরাল রোধগুলোর জন্য: 1/Req = 1/R1 + 1/R2
+২. শ্রেণী সমবায়ের জন্য: Req = R1 + R2
+৩. মূল প্রবাহ নির্ণয়: I = V / Req"""
+
+        elif "খনিজ" in text or "density" in text or "ঘনত্ব" in text:
+            bot_reply = """**খনিজের ঘনত্ব নির্ণয়ের নিয়ম:**
+১. অপসারিত পানির ভর বের করুন: m_water = m_air - m_water
+২. আপেক্ষিক গুরুত্ব (SG) = m_air / m_water
+৩. ঘনত্ব (rho) = SG * 1000 kg/m^3"""
+
         else:
-            bot_resp = (
-                f"Query processed: '{user_query}'. For numerical solving, navigate"
-                " to 'Learning Physics Basic' or inspect problem code structures"
-                " in 'Deep Analysis'."
-            )
+            bot_reply = f"""**সমাধান নির্দেশিকা ({user_input}):**
+১. দেওয়া মানগুলো চিহ্নিত করুন।
+২. সরাসরি ক্যালকুলেটর হিসেবে মান বসিয়ে হিসাব করতে যেকোনো সংখ্যা ও চিহ্ন পাঠাতে পারেন (যেমন: 100/14.5)।
+৩. বড় গাণিতিক সমস্যায় সূত্র অনুযায়ী ধাপগুলো মেনে মান বসিয়ে সমাধান করুন।"""
 
         st.session_state.chat_history.append(
-            {"role": "assistant", "content": bot_resp}
+            {"role": "assistant", "content": bot_reply}
         )
         with st.chat_message("assistant"):
-            st.write(bot_resp)
+            st.write(bot_reply)
