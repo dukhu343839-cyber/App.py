@@ -34,7 +34,7 @@ if "language" not in st.session_state:
     st.session_state.language = "বাংলা"
 
 # ChatGPT/Gemini-style local chat sessions.
-_GREETING = "হ্যালো। আমি Moon AI — Physics শেখা, হিসাব এবং সমস্যা সমাধানে সাহায্য করতে পারি।"
+_GREETING = "হ্যালো। আমি Moon AI — Physics এর সমস্যা সমাধানের জন্য সাহায্য করতে পারি।"
 if "chat_sessions" not in st.session_state:
     st.session_state.chat_sessions = [{
         "id": 1,
