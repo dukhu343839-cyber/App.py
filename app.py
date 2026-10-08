@@ -1236,7 +1236,7 @@ elif st.session_state.current_page == "Deep Analysis":
             st.write(explanation)
             st.info("Moon AI বিশ্লেষণ: কারণ → সূত্র/নীতি → বাস্তব ফল—এই তিন ধাপে বিষয়টি ভাঙলে ধারণাটি পরিষ্কার হয়।")
 
-    st.markdown("### 🔬 Critical problem-solving toolkit")
+    st.markdown("###  Critical problem-solving toolkit")
     toolkit = [
         ("Free-body diagram", "প্রথমে সব বাহ্যিক বল আঁকো; তারপর প্রতিটি অক্ষ বরাবর ΣF=ma লেখো।"),
         ("Energy method", "সময় জটিল হলে W_net=ΔK বা শক্তি সংরক্ষণ ব্যবহার করো।"),
@@ -1248,7 +1248,7 @@ elif st.session_state.current_page == "Deep Analysis":
     for name, text in toolkit:
         st.markdown(f"**{name}:** {text}")
 
-    with st.expander("📐 গুরুত্বপূর্ণ সূত্র ও প্রতিপাদন"):
+    with st.expander(" গুরুত্বপূর্ণ সূত্র ও প্রতিপাদন"):
         st.latex(r"v=u+at")
         st.latex(r"s=ut+\frac{1}{2}at^2")
         st.latex(r"v^2=u^2+2as")
@@ -1438,12 +1438,12 @@ elif st.session_state.current_page == "Theme Settings":
         st.success("ভাষা পরিবর্তন করা হয়েছে। নতুন navigation label পরের render-এ দেখা যাবে।")
         st.rerun()
 
-    st.subheader("🎨 Appearance")
+    st.subheader(" Appearance")
     theme = st.radio("থিম", ["Dark Premium", "Midnight Blue"], horizontal=True)
     if theme == "Midnight Blue":
         st.markdown("<style>.stApp{background:#07152a!important}</style>", unsafe_allow_html=True)
 
-    st.subheader("🖼️ Background")
+    st.subheader(" Background")
     uploaded_file = st.file_uploader("গ্যালারি থেকে JPG/PNG বেছে নিন", type=["jpg", "jpeg", "png"])
     if uploaded_file is not None:
         st.session_state.bg_image = base64.b64encode(uploaded_file.getvalue()).decode()
@@ -1452,7 +1452,7 @@ elif st.session_state.current_page == "Theme Settings":
         st.session_state.bg_image = None
         st.rerun()
 
-    st.subheader("🤖 Moon AI Controls")
+    st.subheader(" Moon AI Controls")
     st.checkbox("Moon AI-এর উত্তরগুলোতে ধাপে ধাপে explanation দেখান", value=True, key="ai_explain")
     st.checkbox("CQ-এর উত্তর থেকে Moon AI reasoning ব্যবহার করুন", value=True, key="ai_cq")
     if st.button("সব শেখা তথ্য মুছে ফেলুন"):
