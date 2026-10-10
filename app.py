@@ -1444,7 +1444,7 @@ elif st.session_state.current_page == "Deep Analysis":
     for name, text in toolkit:
         st.markdown(f"**{name}:** {text}")
 
-    with st.expander("📐 গুরুত্বপূর্ণ সূত্র ও প্রতিপাদন"):
+    with st.expander(" গুরুত্বপূর্ণ সূত্র ও প্রতিপাদন"):
         st.latex(r"v=u+at")
         st.latex(r"s=ut+\frac{1}{2}at^2")
         st.latex(r"v^2=u^2+2as")
